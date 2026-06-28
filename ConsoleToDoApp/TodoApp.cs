@@ -14,7 +14,7 @@ namespace ConsoleToDoApp
         // タスクを保存するファイル名
         private const string TASK_FILE = "tasks.txt";
 
-        private List<string> taskList = new();
+        private List<TaskItem> taskList = new();
 
         /*
          * タスクを追加する
@@ -29,7 +29,7 @@ namespace ConsoleToDoApp
             }
             else
             {
-                taskList.Add(newTaskName);
+                taskList.Add(new TaskItem { Name = newTaskName });
             }
         }
 
@@ -47,7 +47,7 @@ namespace ConsoleToDoApp
                 foreach (var task in taskList)
                 {
                     ++index;
-                    Console.WriteLine(index + ". " + task);
+                    Console.WriteLine(index + ". " + task.Name);
                 }
                 Console.WriteLine("-------------------------\r\n");
             }
@@ -71,20 +71,13 @@ namespace ConsoleToDoApp
             Console.WriteLine("削除する番号を入力してください");
             if (int.TryParse(Console.ReadLine(), out int inputNumber))
             {
-                int count = 0;
-                foreach (var task in taskList)
+                if (inputNumber >= 1 && inputNumber <= taskList.Count)
                 {
-                    ++count;
-                    if (count == inputNumber)
-                    {
-                        string delTaskName = task;
-                        taskList.RemoveAt(count - 1);
-                        delFlag = true;
-                        Console.WriteLine(delTaskName + "を削除しました\r\n");
-                        break;
-                    }
+                    string delTaskName = taskList[inputNumber - 1].Name;
+                    taskList.RemoveAt(inputNumber - 1);
+                    Console.WriteLine(delTaskName + "を削除しました\r\n");
                 }
-                if (!delFlag)
+                else
                 {
                     ShowErrMsg(ERR_TASK_NOT_FOUND);
                 }
@@ -100,7 +93,15 @@ namespace ConsoleToDoApp
          */
         public void SaveTasks()
         {
-            File.WriteAllLines(TASK_FILE, taskList);
+            try
+            {
+                File.WriteAllLines(TASK_FILE, taskList.Select(x => x.Name));
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine("タスクファイルの保存に失敗しました。");
+                Console.WriteLine(ex.Message);
+            }
         }
 
         /*
@@ -108,10 +109,20 @@ namespace ConsoleToDoApp
          */
         public void LoadTasks()
         {
-            // タスクを保存したファイルがあれば読み込む
-            if (File.Exists(TASK_FILE))
+            try
             {
-                taskList = File.ReadAllLines(TASK_FILE).ToList();
+                // タスクを保存したファイルがあれば読み込む
+                if (File.Exists(TASK_FILE))
+                {
+                    taskList = File.ReadAllLines(TASK_FILE)
+                        .Select(x => new TaskItem { Name = x })
+                        .ToList();
+                }
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine("タスクファイルの読み込みに失敗しました。");
+                Console.WriteLine(ex.Message);
             }
         }
 
@@ -128,6 +139,5 @@ namespace ConsoleToDoApp
                 default: break;
             }
         }
-
     }
 }
