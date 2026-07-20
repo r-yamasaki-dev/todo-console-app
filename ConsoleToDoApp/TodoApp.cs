@@ -25,6 +25,7 @@ namespace ConsoleToDoApp
         public void AddTask()
         {
             Console.WriteLine("タスク名を入力してください");
+            Console.Write("> ");
             string? newTaskName = Console.ReadLine();
             if (String.IsNullOrEmpty(newTaskName))
             {
@@ -65,6 +66,7 @@ namespace ConsoleToDoApp
             while (true)
             {
                 Console.WriteLine("締切日時を入力しますか？(y/n)");
+                Console.Write("> ");
                 string? input = Console.ReadLine();
                 if (String.IsNullOrEmpty(input))
                 {
@@ -77,6 +79,7 @@ namespace ConsoleToDoApp
                 {
                     // 締切日時を追加する
                     Console.WriteLine("締切日時を入力してください(yyyy/MM/dd HH:mm)");
+                    Console.Write("> ");
                     // 指定したフォーマットでのみ受け付ける
                     input = Console.ReadLine();
                     if (DateTime.TryParseExact(input, format, CultureInfo.InvariantCulture, DateTimeStyles.None, out outDueDate))
@@ -101,21 +104,26 @@ namespace ConsoleToDoApp
 
         /*
          * タスク一覧を表示する
+         * bool sortCompleted: falseならば順番通りに表示。
+         *                     trueならば完了済みタスクを後ろくるように並べ替えて表示。
          * return: タスクがあればtrue、なければfalseを返す。
          */
-        public bool ShowTasks()
+        public bool ShowTasks(bool sortCompleted = false)
         {
             bool hasTask = taskList.Count > 0;
             int index = 0;
-            string completedMark = "[ ]";
             if (hasTask)
             {
+                IEnumerable<TaskItem> tasks = taskList;
                 Console.WriteLine("--- タスク一覧 ----------");
-                var sortedTasks = taskList.OrderBy(task => task.IsCompleted);
-                foreach (var task in sortedTasks)
+                if (sortCompleted)
+                {
+                    tasks = taskList.OrderBy(task => task.IsCompleted);
+                }
+                foreach (var task in tasks)
                 {
                     ++index;
-                    completedMark = task.IsCompleted ? "[x]" : "[ ]";
+                    string completedMark = completedMark = task.IsCompleted ? "[x]" : "[ ]";
                     Console.WriteLine($"{index}. {completedMark} {task.Name}");
                     Console.WriteLine($"作成日時: {task.CreatedAt:yyyy/MM/dd HH:mm}");
                     Console.WriteLine($"締切日時: {(task.DueDate == null ? "なし" : task.DueDate.Value.ToString("yyyy/MM/dd HH:mm"))}");
@@ -140,6 +148,7 @@ namespace ConsoleToDoApp
                 return;
             }
             Console.WriteLine("削除するタスクの番号を入力してください");
+            Console.Write("> ");
             if (int.TryParse(Console.ReadLine(), out int inputNumber))
             {
                 if (inputNumber >= 1 && inputNumber <= taskList.Count)
@@ -169,6 +178,7 @@ namespace ConsoleToDoApp
                 return;
             }
             Console.WriteLine("完了するタスクの番号を入力してください");
+            Console.Write("> ");
             if (int.TryParse(Console.ReadLine(), out int inputNumber))
             {
                 if (inputNumber >= 1 && inputNumber <= taskList.Count)
@@ -176,6 +186,45 @@ namespace ConsoleToDoApp
                     string delTaskName = taskList[inputNumber - 1].Name;
                     taskList[inputNumber - 1].IsCompleted = true;
                     Console.WriteLine(delTaskName + "を完了しました\r\n");
+                }
+                else
+                {
+                    ShowErrMsg(ERR_TASK_NOT_FOUND);
+                }
+            }
+            else
+            {
+                ShowErrMsg(ERR_TASK_NUMBER);
+            }
+        }
+
+        /*
+         * タスクを編集する
+         */
+        public void EditTask()
+        {
+            if (!ShowTasks())
+            {
+                return;
+            }
+            Console.WriteLine("編集するタスクの番号を入力してください");
+            Console.Write("> ");
+            if (int.TryParse(Console.ReadLine(), out int inputNumber))
+            {
+                if (inputNumber >= 1 && inputNumber <= taskList.Count)
+                {
+                    Console.WriteLine("新しいタスク名を入力してください");
+                    Console.Write("> ");
+                    string? newTaskName = Console.ReadLine();
+                    if (String.IsNullOrEmpty(newTaskName))
+                    {
+                        Console.WriteLine("error: タスク名の追加に失敗しました");
+                    }
+                    else
+                    {
+                        taskList[inputNumber - 1].Name = newTaskName;
+                        Console.WriteLine("タスク名を " + newTaskName + " に変更しました\r\n");
+                    }
                 }
                 else
                 {
