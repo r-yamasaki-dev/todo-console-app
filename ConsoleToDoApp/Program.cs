@@ -6,7 +6,8 @@ class Program
     const int MENU_ADD = 1;
     const int MENU_SHOW = 2;
     const int MENU_REMOVE = 3;
-    const int MENU_EXIT = 4;
+    const int MENU_COMPLETED = 4;
+    const int MENU_EXIT = 5;
 
     /*
      * メニューを表示する
@@ -17,7 +18,8 @@ class Program
         Console.WriteLine("1. タスク追加");
         Console.WriteLine("2. タスク一覧");
         Console.WriteLine("3. タスク削除");
-        Console.WriteLine("4. 終了");
+        Console.WriteLine("4. タスク完了");
+        Console.WriteLine("5. 終了");
     }
 
     static void Main(string[] args)
@@ -29,7 +31,7 @@ class Program
         todoApp.LoadTasks();
 
         // メイン部分
-        while (menuInput != 4)
+        while (menuInput != MENU_EXIT)
         {
             //メニュー表示
             ShowMenu();
@@ -44,6 +46,8 @@ class Program
                     case MENU_SHOW: todoApp.ShowTasks(); break;
                     //タスク削除
                     case MENU_REMOVE: todoApp.DeleteTask(); break;
+                    //タスク完了
+                    case MENU_COMPLETED: todoApp.CompletedTask(); break;
                     //終了
                     case MENU_EXIT: break;
                     //該当なし

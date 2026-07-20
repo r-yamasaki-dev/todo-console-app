@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Globalization;
 using System.Text;
+using System.Text.Json;
 
 namespace ConsoleToDoApp
 {
@@ -29,8 +32,71 @@ namespace ConsoleToDoApp
             }
             else
             {
-                taskList.Add(new TaskItem { Name = newTaskName });
+                // タスクを追加
+                DateTime inputDueData = DateTime.Now;
+                if (InputDueDate(ref inputDueData))
+                {
+                    taskList.Add(new TaskItem
+                    {
+                        Name = newTaskName,
+                        CreatedAt = DateTime.Now,
+                        DueDate = inputDueData
+                    });
+                }
+                else
+                {
+                    taskList.Add(new TaskItem
+                    {
+                        Name = newTaskName,
+                        CreatedAt = DateTime.Now
+                    });
+                }
             }
+        }
+
+        /*
+         * タスクの締切日時を入力させる
+         * ref DateTime outDueDate: 入力された日時を返す。
+         * return: 締切日時が入力された場合はtrue、入力されなければfalseを返す。
+         */
+        public bool InputDueDate(ref DateTime outDueDate)
+        {
+            string format = "yyyy/MM/dd HH:mm";
+            while (true)
+            {
+                Console.WriteLine("締切日時を入力しますか？(y/n)");
+                string? input = Console.ReadLine();
+                if (String.IsNullOrEmpty(input))
+                {
+                    Console.WriteLine("無効な入力です。'y' または 'n' を入力してください");
+                    Console.WriteLine();
+                    continue;
+                }
+                input = input.Trim().ToLower(); // 入力のスペースを取り除き小文字に変換
+                if (input == "y" || input == "yes")
+                {
+                    // 締切日時を追加する
+                    Console.WriteLine("締切日時を入力してください(yyyy/MM/dd HH:mm)");
+                    // 指定したフォーマットでのみ受け付ける
+                    input = Console.ReadLine();
+                    if (DateTime.TryParseExact(input, format, CultureInfo.InvariantCulture, DateTimeStyles.None, out outDueDate))
+                    {
+                        break;
+                    }
+                    Console.WriteLine("入力形式が正しくありません");
+                    Console.WriteLine();
+                }
+                else if (input == "n" || input == "no")
+                {
+                    return false;
+                }
+                else
+                {
+                    Console.WriteLine("無効な入力です。'y' または 'n' を入力してください。");
+                    Console.WriteLine();
+                }
+            }
+            return true;
         }
 
         /*
@@ -41,13 +107,19 @@ namespace ConsoleToDoApp
         {
             bool hasTask = taskList.Count > 0;
             int index = 0;
+            string completedMark = "[ ]";
             if (hasTask)
             {
                 Console.WriteLine("--- タスク一覧 ----------");
-                foreach (var task in taskList)
+                var sortedTasks = taskList.OrderBy(task => task.IsCompleted);
+                foreach (var task in sortedTasks)
                 {
                     ++index;
-                    Console.WriteLine(index + ". " + task.Name);
+                    completedMark = task.IsCompleted ? "[x]" : "[ ]";
+                    Console.WriteLine($"{index}. {completedMark} {task.Name}");
+                    Console.WriteLine($"作成日時: {task.CreatedAt:yyyy/MM/dd HH:mm}");
+                    Console.WriteLine($"締切日時: {(task.DueDate == null ? "なし" : task.DueDate.Value.ToString("yyyy/MM/dd HH:mm"))}");
+                    Console.WriteLine();
                 }
                 Console.WriteLine("-------------------------\r\n");
             }
@@ -63,12 +135,11 @@ namespace ConsoleToDoApp
          */
         public void DeleteTask()
         {
-            bool delFlag = false;
             if (!ShowTasks())
             {
                 return;
             }
-            Console.WriteLine("削除する番号を入力してください");
+            Console.WriteLine("削除するタスクの番号を入力してください");
             if (int.TryParse(Console.ReadLine(), out int inputNumber))
             {
                 if (inputNumber >= 1 && inputNumber <= taskList.Count)
@@ -89,15 +160,45 @@ namespace ConsoleToDoApp
         }
 
         /*
+         * タスクを完了する
+         */
+        public void CompletedTask()
+        {
+            if (!ShowTasks())
+            {
+                return;
+            }
+            Console.WriteLine("完了するタスクの番号を入力してください");
+            if (int.TryParse(Console.ReadLine(), out int inputNumber))
+            {
+                if (inputNumber >= 1 && inputNumber <= taskList.Count)
+                {
+                    string delTaskName = taskList[inputNumber - 1].Name;
+                    taskList[inputNumber - 1].IsCompleted = true;
+                    Console.WriteLine(delTaskName + "を完了しました\r\n");
+                }
+                else
+                {
+                    ShowErrMsg(ERR_TASK_NOT_FOUND);
+                }
+            }
+            else
+            {
+                ShowErrMsg(ERR_TASK_NUMBER);
+            }
+        }
+
+        /*
          * タスクの状態を外部ファイルに保存する
          */
         public void SaveTasks()
         {
             try
             {
-                File.WriteAllLines(TASK_FILE, taskList.Select(x => x.Name));
+                string json = JsonSerializer.Serialize(taskList);
+                File.WriteAllText(TASK_FILE, json);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine("タスクファイルの保存に失敗しました。");
                 Console.WriteLine(ex.Message);
@@ -114,9 +215,9 @@ namespace ConsoleToDoApp
                 // タスクを保存したファイルがあれば読み込む
                 if (File.Exists(TASK_FILE))
                 {
-                    taskList = File.ReadAllLines(TASK_FILE)
-                        .Select(x => new TaskItem { Name = x })
-                        .ToList();
+                    string json = File.ReadAllText(TASK_FILE);
+                    taskList = JsonSerializer.Deserialize<List<TaskItem>>(json)
+                        ?? new List<TaskItem>();
                 }
             }
             catch(Exception ex)
@@ -133,7 +234,7 @@ namespace ConsoleToDoApp
         {
             switch (errcode)
             {
-                case ERR_MENU: Console.WriteLine("1～4 の数字を入力してください\r\n"); break;
+                case ERR_MENU: Console.WriteLine("1～5 の数字を入力してください\r\n"); break;
                 case ERR_TASK_NUMBER: Console.WriteLine("タスクの番号を入力してください\r\n"); break;
                 case ERR_TASK_NOT_FOUND: Console.WriteLine("入力された番号のタスクがありません\r\n"); break;
                 default: break;
